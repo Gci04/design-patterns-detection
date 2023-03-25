@@ -12,6 +12,7 @@ from utils import mds, isomap, pca, tsne
 from algos import logistic_train, dt, lda, svm, rf, knn, light, catboost,  catboost2, statified_results
 
 
+LOG_FILES_PATH = 'log.dat'   # path for log file
 BASE = Path('./coach_repos_zip')
 
 assert "./coach_repos_zip/2048-android-master/src" == find_src_path('./coach_repos_zip/2048-android-master')
@@ -43,11 +44,13 @@ def read_embeddings(base = 'embeddings', pooling = 'sum'):
 
 
 def log_results(name, X_shape, m_scores, std_scores):
-    with open('log.dat', "a") as file:
+    """logs the results of best experiments alongwith corresponding experimental setting"""
+    with open(LOG_FILES_PATH, "a") as file:
         # should have atleast two 60% and one 50% score 
         if (m_scores > 0.6).sum() > 1 and (m_scores > 0.5).sum() > 2:
             file.write(f"X.shape: {X_shape}\n")
-            file.write(f"results of: {name}: \n" )
+            file.write(f"Experimental Setting: {str(exp_setting)}\n")
+            file.write(f"Model Name: {name}: \n" )
             file.write("Mean: [" + ", ".join(str(s) for s in m_scores) + "]\n")
             file.write("Std_dev: [" + ", ".join(str(s) for s in std_scores) + "]")
             file.write("\n\n")
@@ -65,11 +68,12 @@ def read_projects():
 
 # manipulate 
 exp_setting = {
+    "pooling_strategy": "sum",   # choose either (sum | max)
     "drop_multicoll": False,  # drop multi-collinearity
     "scale_before_dim_reduction": False, 
-    "dimensionality_reduction_algo": "isomap",   # choose dimensionality reduction methodology to use: [pca, mds, isomap]
+    "dimensionality_reduction_algo": "isomap",   # choose dimensionality reduction methodology to use: (pca | mds | isomap | tsne)
     "output_emb_dimensions" : 5,
-    "scale_after_dim_reduction": False,
+    "scale_after_dim_reduction": True,
 }
 
 class Trainer:
@@ -83,7 +87,7 @@ class Trainer:
         
         self.df = read_projects()
         self._preprocess()
-        proj_embeddings, self.lbl2idx, target = read_embeddings()
+        proj_embeddings, self.lbl2idx, target = read_embeddings(pooling=exp_setting["pooling_strategy"])
         self.idx2lbl = dict(zip(self.lbl2idx.values(), self.lbl2idx.keys()))
         self.X_raw_emb = tf.convert_to_tensor(list(proj_embeddings.values()))
         self.X, self.y = self._apply_criterion(proj_embeddings.keys())
