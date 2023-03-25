@@ -24,6 +24,7 @@ python trainer.py
 * The pipeline can be configured by following parameters in `trainer.py` file:
 ```
 exp_setting = {
+    "pooling_strategy": "sum",   # choose either (sum | max)
     "drop_multicoll": False,  # drop linearly correlated features from ck_metrics only
     "scale_before_dim_reduction": False,    # scale embeddings before applying dimensionality reduction
     "dimensionality_reduction_algo": "isomap",   # choose dimensionality reduction methodology to use: [pca, mds, isomap, tsne]
