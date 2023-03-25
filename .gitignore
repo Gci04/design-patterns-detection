@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.ipynb_checkpoints/
+__pycache__/
+coach_repos_zip.zip
+coach_repos_zip/
+*.zip
+catboost_info/
+*.dat
+

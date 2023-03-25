@@ -1,5 +1,5 @@
 """Driver code: Before running this one needs to download and preprocess coach_source code and
- that can be accomplished by running `download_prep_repos_data.ipynb` code"""
+ that can be accomplished by running download_prep_repos_data.ipynb code"""
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -8,7 +8,13 @@ from data_wrangler import find_src_path, get_java_paths
 from utils import scale_data
 from termcolor import colored
 
-from utils import mds, isomap, pca
+from utils import mds, isomap, pca, tsne
+from algos import logistic_train, dt, lda, svm, rf, knn, light, catboost,  catboost2, statified_results
+
+
+BASE = Path('./coach_repos_zip')
+
+assert "./coach_repos_zip/2048-android-master/src" == find_src_path('./coach_repos_zip/2048-android-master')
 
 
 def drop_multicollinear(df_ck_metrics, COLLINEARITY_THRESHOLD = 0.98):
@@ -38,19 +44,14 @@ def read_embeddings(base = 'embeddings', pooling = 'sum'):
 
 def log_results(name, X_shape, m_scores, std_scores):
     with open('log.dat', "a") as file:
-        # should have atleast 0.
+        # should have atleast two 60% and one 50% score 
         if (m_scores > 0.6).sum() > 1 and (m_scores > 0.5).sum() > 2:
-            breakpoint()
             file.write(f"X.shape: {X_shape}\n")
             file.write(f"results of: {name}: \n" )
             file.write("Mean: [" + ", ".join(str(s) for s in m_scores) + "]\n")
             file.write("Std_dev: [" + ", ".join(str(s) for s in std_scores) + "]")
             file.write("\n\n")
 
-
-BASE = Path('./coach_repos_zip')
-
-assert "./coach_repos_zip/2048-android-master/src" == find_src_path('./coach_repos_zip/2048-android-master')
 
 def read_projects():
     """read project codes to keep track of all the .java files against each project"""
@@ -66,13 +67,13 @@ def read_projects():
 exp_setting = {
     "drop_multicoll": False,  # drop multi-collinearity
     "scale_before_dim_reduction": False, 
-    "dimensionality_reduction_algo": "mds",   # choose dimensionality reduction methodology to use: [pca, mds, isomap]
-    "output_emb_dimensions" : 30,
+    "dimensionality_reduction_algo": "isomap",   # choose dimensionality reduction methodology to use: [pca, mds, isomap]
+    "output_emb_dimensions" : 5,
     "scale_after_dim_reduction": False,
 }
 
 class Trainer:
-
+    """trains model using default and Cross-Validation"""
     def __init__(self, ck_features_fname = "ck_features.csv") -> None:
         
         self.df_ck_metrics = pd.read_csv(ck_features_fname)
@@ -88,13 +89,30 @@ class Trainer:
         self.X, self.y = self._apply_criterion(proj_embeddings.keys())
 
 
+    def train_cv(self, classifier, param_grid):
+        """performs a grid search over the input `classifier` and the `grid parameters`"""
+        from sklearn.model_selection import GridSearchCV
+
+        clf_cv = GridSearchCV(estimator=classifier, param_grid=param_grid, cv=5, scoring = 'f1_macro', n_jobs=4)
+        clf_cv.fit(self.X, self.y)
+        best_params = clf_cv.best_params_
+        print("best params", best_params)
+        print("best score: ", clf_cv.best_score_)
+        return best_params
+
+
+    def get_best_results(self, best_clf):
+        """run CV on best parameters obtained from `train_cv` function"""
+        return statified_results(self.X, self.y, best_clf)
+        
+
     def train(self):
-        from algos import logistic_train, dt, lda, svm, rf, knn, light, catboost,  catboost2, statified_results
-        algo_sigs = [logistic_train, dt, lda, svm, rf, knn, catboost,  catboost2, light]
+        """train multiple algorithms and log best results"""
+        algo_sigs = [logistic_train, dt, lda, svm, rf, knn, light, catboost]
         for clf_sig in algo_sigs:
             clf_name = clf_sig.__name__
             print("X.shape: ", self.X.shape)
-            mean_scores, std_scores = statified_results( self.X, self.y, clf_sig)
+            mean_scores, std_scores = statified_results( self.X, self.y, clf_sig())
             print(colored(f'{clf_name} results:', 'red'))
             print(mean_scores, std_scores)
             log_results(clf_name, self.X.shape, mean_scores, std_scores)
@@ -105,6 +123,7 @@ class Trainer:
             "pca": pca,
             "mds": mds,
             "isomap": isomap,
+            "tsne": tsne
         }
         X_local = self.X_raw_emb
         if exp_setting['scale_before_dim_reduction']:
@@ -116,7 +135,7 @@ class Trainer:
         df_emb = pd.DataFrame(X_local)
         df_emb["folder_name"] = project_dirs
 
-        # Concatenating features (embeddings + ck_metrics)
+        # Concatenating features (reduced-embeddings + ck_metrics)
         df_final = self.df_ck_metrics.set_index('folder_name').join(df_emb.set_index('folder_name'), on='folder_name').reset_index()
         df_final = df_final.drop(["project_name", "folder_name"], axis=1)
         df_final['label'] = df_final['label'].apply(lambda l: self.lbl2idx[l])
@@ -138,5 +157,25 @@ class Trainer:
 
 
 if __name__ == "__main__":
+    
+    
     Trainer().train()
+    
+    # Uncomment to run cross-validation
+    # from sklearn.ensemble import RandomForestClassifier
+    # rfc=RandomForestClassifier()  # classifier for running CV
 
+    # grid = { 
+    #     'n_estimators': [100, 200, 500, 700], #, 1_000, 2_000],
+    #     'max_features': ['sqrt', 'log2'],
+    #     'min_samples_leaf': [1, 2, 4, 5],
+    #     'max_depth' : [4, 5, 6, 7, 8, 10, 12, 14, 16, 25, 50],
+    #     'criterion' :['gini', 'entropy']
+    # }
+    # tr = Trainer()
+    # best_params = tr.train_cv(rfc, grid)
+
+    # best_rfc  = RandomForestClassifier(**best_params)
+    # print(tr.get_best_results(best_rfc))
+
+    

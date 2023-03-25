@@ -19,7 +19,7 @@ def statified_results(X, y, classifier, N=5):
         X_train, X_test = X[train_index, :], X[test_index, :]
         y_train, y_test = y[train_index], y[test_index]
             
-        clf = classifier() 
+        clf = classifier
         clf.fit(X_train, y_train)
         
         y_preds = clf.predict(X_test)
@@ -74,7 +74,7 @@ from catboost import CatBoostClassifier
 def catboost():
     model = CatBoostClassifier(iterations=15,
                                depth=16,
-                               learning_rate=0.2,
+                               learning_rate=0.1,
                                loss_function='MultiClass',
                                verbose=True)
     return model
@@ -82,7 +82,7 @@ def catboost():
 def catboost2():
     model = CatBoostClassifier(iterations=25,
                                depth=16,
-                               learning_rate=0.1,
+                               learning_rate=0.2,  # 0.1
                                loss_function='MultiClass',
                                verbose=True)
     return model
@@ -103,34 +103,3 @@ def light():
     model = ltb.LGBMClassifier(**params)
     return model
     
-
-
-  
-
-
-# @skopt.utils.use_named_args(SPACE)
-# def objective(**params):
-#     reg.set_params(**params)
-
-#     return -np.mean(cross_val_score(reg, X, y, cv=5, n_jobs=-1,
-                                    # scoring="neg_mean_absolute_error"))
-# def objective(**params):
-#    return -1.0 * train_evaluate(params)
-
-
-#  @skopt.utils.use_named_args(SPACE)
-#         def objective(**params):
-#             # clf_sig.set_params(**params)
-#             lbm_clf = ltb.LGBMClassifier(**params)
-#             return -np.mean(cross_val_score(lbm_clf, X, y, cv=5, n_jobs=-1,
-#                                             scoring="neg_mean_absolute_error"))
-        
-#         from skopt import gp_minimize
-
-#         result = gp_minimize(objective, SPACE, n_calls=50, random_state=42, verbose=1)
-        
-        
-#         results = skopt.forest_minimize(objective, SPACE,
-#                                 n_calls=100, n_random_starts=10)
-#         print("results light::", results)
-

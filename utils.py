@@ -1,7 +1,7 @@
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import KernelPCA
 from sklearn.manifold import LocallyLinearEmbedding, Isomap
-from sklearn.manifold import MDS
+from sklearn.manifold import MDS, TSNE
 
 
 def scale_data(data):
@@ -24,3 +24,9 @@ def mds(X_data, out_comp):
 def isomap(X_data, out_comp):
     iso = Isomap(n_components=out_comp)
     return iso.fit_transform(X_data)
+
+
+def tsne(X_data, out_comp):
+    tsne = TSNE(n_components=out_comp)
+    return tsne.fit_transform(X_data)
+    
