@@ -29,6 +29,6 @@ exp_setting = {
     "scale_before_dim_reduction": False,    # scale embeddings before applying dimensionality reduction
     "dimensionality_reduction_algo": "isomap",   # choose dimensionality reduction methodology to use: [pca, mds, isomap, tsne]
     "output_emb_dimensions" : 5,   # no of output dimensions of embeddings after apply dim reduction
-    "scale_after_dim_reduction": False,   # scaling combined features (embeddings_dim_reduced + ck_metrics) before training classifiers
+    "scale_after_dim_reduction": True,   # scaling combined features (embeddings_dim_reduced + ck_metrics) before training classifiers
 }
 ```
