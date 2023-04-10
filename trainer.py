@@ -10,6 +10,7 @@ from termcolor import colored
 
 from utils import mds, isomap, pca, tsne
 from algos import logistic_train, dt, lda, svm, rf, knn, light, catboost,  catboost2, statified_results
+from leave_one_out import leave_one_out
 
 
 LOG_FILES_PATH = 'log.dat'   # path for log file
@@ -76,6 +77,7 @@ exp_setting = {
     "scale_after_dim_reduction": True,
 }
 
+from algos import train_clf
 class Trainer:
     """trains model using default and Cross-Validation"""
     def __init__(self, ck_features_fname = "ck_features.csv") -> None:
@@ -90,7 +92,7 @@ class Trainer:
         proj_embeddings, self.lbl2idx, target = read_embeddings(pooling=exp_setting["pooling_strategy"])
         self.idx2lbl = dict(zip(self.lbl2idx.values(), self.lbl2idx.keys()))
         self.X_raw_emb = tf.convert_to_tensor(list(proj_embeddings.values()))
-        self.X, self.y = self._apply_criterion(proj_embeddings.keys())
+        self.X, self.y, self.project_names = self._apply_criterion(proj_embeddings.keys())
 
 
     def train_cv(self, classifier, param_grid):
@@ -107,19 +109,25 @@ class Trainer:
 
     def get_best_results(self, best_clf):
         """run CV on best parameters obtained from `train_cv` function"""
-        return statified_results(self.X, self.y, best_clf)
+
+        return statified_results(self.X, self.y, best_clf, exp_setting)
         
 
     def train(self):
         """train multiple algorithms and log best results"""
-        algo_sigs = [logistic_train, dt, lda, svm, rf, knn, light, catboost]
+        algo_sigs = [catboost]  #  [logistic_train, dt, lda, svm, rf, knn, light,] 
         for clf_sig in algo_sigs:
             clf_name = clf_sig.__name__
             print("X.shape: ", self.X.shape)
-            mean_scores, std_scores = statified_results( self.X, self.y, clf_sig())
+            print(train_clf(self.X, self.y, clf_sig()))
+            mean_scores, std_scores, test_projects, y_test, best_clf = statified_results(self.X, self.y, self.project_names, clf_sig())
             print(colored(f'{clf_name} results:', 'red'))
             print(mean_scores, std_scores)
             log_results(clf_name, self.X.shape, mean_scores, std_scores)
+
+        from leave_one_out import leave_one_out
+        leave_one_out(BASE, test_projects, y_test, best_clf, self)
+        breakpoint()
 
     def _apply_criterion(self, project_dirs):
         
@@ -134,23 +142,23 @@ class Trainer:
             X_local = scale_data(X_local)
         
         out_emb_dims = exp_setting['output_emb_dimensions']
-        X_local = dim_reduction[exp_setting['dimensionality_reduction_algo']](X_local, out_emb_dims)
+        X_local, self.dim_reducer = dim_reduction[exp_setting['dimensionality_reduction_algo']](X_local, out_emb_dims)
         
         df_emb = pd.DataFrame(X_local)
         df_emb["folder_name"] = project_dirs
 
         # Concatenating features (reduced-embeddings + ck_metrics)
         df_final = self.df_ck_metrics.set_index('folder_name').join(df_emb.set_index('folder_name'), on='folder_name').reset_index()
-        df_final = df_final.drop(["project_name", "folder_name"], axis=1)
         df_final['label'] = df_final['label'].apply(lambda l: self.lbl2idx[l])
+        
+        project_names = df_final['project_name'].values
+        df_final = df_final.drop(["project_name", "folder_name"], axis=1)
 
         y = df_final['label']        
         df_final.drop('label', axis=1, inplace=True)
         X = df_final.values
         
-        if exp_setting['scale_after_dim_reduction']:
-            X = scale_data(X)
-        return X, y
+        return X, y, project_names
 
     def _preprocess(self):
         self.df_ck_metrics['folder_name'] = self.df_ck_metrics['project_name'].str.lower().str.strip().values

@@ -5,28 +5,47 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_recall_fscore_support
 import numpy as np
 
+# Beat these results
+# [0.8333333333333333, 0.4, 0.6666666666666666, 0.6666666666666666]
 
+def train_clf(X, y, clf):
 
-def statified_results(X, y, classifier, N=5):
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=len(X) // 5)
+  clf.fit(X_train, y_train)
+  
+  y_preds = clf.predict(X_test)
+
+  _, _, f, s_ = precision_recall_fscore_support(y_test, y_preds)
+  return f.tolist()
+
+# From stratified_results
+# (Pdb) len(y_train), len(y_test)
+# (55, 14)
+
+def statified_results(X, y, project_names, classifier, N=5):
 
     skf = StratifiedKFold(n_splits=N)
     skf.get_n_splits(X, y)
-
-    f1_scores_classwise = [] 
+    project_names = np.array(project_names)
+    test_projects = None
+    f1_scores_classwise = []
 
     for train_index, test_index in skf.split(X, y):
 
         X_train, X_test = X[train_index, :], X[test_index, :]
         y_train, y_test = y[train_index], y[test_index]
-            
+        
         clf = classifier
+
         clf.fit(X_train, y_train)
         
         y_preds = clf.predict(X_test)
 
         _, _, f, s_ = precision_recall_fscore_support(y_test, y_preds)
         f1_scores_classwise.append(f.tolist())
-    return  np.mean(f1_scores_classwise, axis=0), np.std(f1_scores_classwise, axis=0)
+        test_projects = project_names[test_index]
+    # breakpoint()
+    return  np.mean(f1_scores_classwise, axis=0), np.std(f1_scores_classwise, axis=0), test_projects, y_test, clf
 
 
 
