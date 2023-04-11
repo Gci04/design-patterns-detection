@@ -22,7 +22,26 @@ def train_clf(X, y, clf):
 # (Pdb) len(y_train), len(y_test)
 # (55, 14)
 
-def statified_results(X, y, project_names, classifier, N=5):
+
+def plot_catboost_features(X_train, y_train, feat_names, clf, TOP = 50):
+  import matplotlib.pyplot as plt
+  from catboost import CatBoostClassifier, Pool
+  train_data = Pool(data=X_train, label=y_train, cat_features=[])
+  feat_importance = clf.get_feature_importance(train_data, )
+  # feat_names = self.feat_names # clf.feature_names_
+  print(feat_importance)
+  fig, ax = plt.subplots(figsize=(8, 6))
+  sorted_zipped = sorted(list(zip(feat_names, feat_importance)), key=lambda x: x[1], reverse=True)
+
+  sorted_feat, sorted_imp =  zip(*sorted_zipped)
+  ax.barh([str(x) for x in sorted_feat[:TOP]], sorted_imp[:TOP])
+  ax.set_xlabel('Feature Importance')
+  ax.set_title('CatBoost Classifier Feature Importance')
+  plt.show()
+
+
+
+def statified_results(X, y, project_names, classifier, self, N=5):
 
     skf = StratifiedKFold(n_splits=N)
     skf.get_n_splits(X, y)
@@ -44,7 +63,11 @@ def statified_results(X, y, project_names, classifier, N=5):
         _, _, f, s_ = precision_recall_fscore_support(y_test, y_preds)
         f1_scores_classwise.append(f.tolist())
         test_projects = project_names[test_index]
+
+    plot_catboost_features(X_train, y_train, self.feat_names, clf)
+
     # breakpoint()
+    # feature_importance()
     return  np.mean(f1_scores_classwise, axis=0), np.std(f1_scores_classwise, axis=0), test_projects, y_test, clf
 
 
