@@ -23,12 +23,20 @@ def train_clf(X, y, clf):
 # (55, 14)
 
 
-def plot_catboost_features(X_train, y_train, feat_names, clf, TOP = 50):
+def plot_catboost_features(X_train, y_train, feat_names, all_clfs, TOP = 50):
   import matplotlib.pyplot as plt
   from catboost import CatBoostClassifier, Pool
+  
+  multiple_feat_importances = [ ]
+
   train_data = Pool(data=X_train, label=y_train, cat_features=[])
-  feat_importance = clf.get_feature_importance(train_data, )
-  # feat_names = self.feat_names # clf.feature_names_
+  for clf in all_clfs:
+  
+    feat_importance = clf.get_feature_importance(train_data, )
+    multiple_feat_importances.append(feat_importance)
+
+  feat_importance = np.mean(multiple_feat_importances, axis=0)
+  # breakpoint()
   print(feat_importance)
   fig, ax = plt.subplots(figsize=(8, 6))
   sorted_zipped = sorted(list(zip(feat_names, feat_importance)), key=lambda x: x[1], reverse=True)
@@ -49,6 +57,7 @@ def statified_results(X, y, project_names, classifier, self, N=5):
     test_projects = None
     f1_scores_classwise = []
 
+    all_folds_clfs = []
     for train_index, test_index in skf.split(X, y):
 
         X_train, X_test = X[train_index, :], X[test_index, :]
@@ -60,11 +69,15 @@ def statified_results(X, y, project_names, classifier, self, N=5):
         
         y_preds = clf.predict(X_test)
 
+        all_folds_clfs.append(clf)
+
         _, _, f, s_ = precision_recall_fscore_support(y_test, y_preds)
         f1_scores_classwise.append(f.tolist())
         test_projects = project_names[test_index]
 
-    plot_catboost_features(X_train, y_train, self.feat_names, clf)
+    print("catboost features plots...")
+    # breakpoint()
+    plot_catboost_features(X_test, y_test, self.feat_names, all_folds_clfs)
 
     # breakpoint()
     # feature_importance()

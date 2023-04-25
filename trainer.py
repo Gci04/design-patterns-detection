@@ -41,6 +41,7 @@ def read_embeddings(base = 'embeddings', pooling = 'sum'):
     source_path = f"{base}/features_dict_{pooling}pool"
     with shelve.open(source_path) as db:
         proj_embeddings_filtered, lbl2idx, y = db[KEYSPACE]
+    breakpoint()
     return proj_embeddings_filtered, lbl2idx, y
 
 
@@ -119,15 +120,16 @@ class Trainer:
         for clf_sig in algo_sigs:
             clf_name = clf_sig.__name__
             print("X.shape: ", self.X.shape)
-            print(train_clf(self.X, self.y, clf_sig()))
-            mean_scores, std_scores, test_projects, y_test, best_clf = statified_results(self.X, self.y, self.project_names, clf_sig())
+            # print(train_clf(self.X, self.y, clf_sig()))
+            # breakpoint()
+            mean_scores, std_scores, test_projects, y_test, best_clf = statified_results(self.X, self.y, self.project_names, clf_sig(), self)
             print(colored(f'{clf_name} results:', 'red'))
             print(mean_scores, std_scores)
             log_results(clf_name, self.X.shape, mean_scores, std_scores)
 
-        from leave_one_out import leave_one_out
-        leave_one_out(BASE, test_projects, y_test, best_clf, self)
-        breakpoint()
+        # from leave_one_out import leave_one_out
+        # leave_one_out(BASE, test_projects, y_test, best_clf, self)
+        # breakpoint()
 
     def _apply_criterion(self, project_dirs):
         
@@ -158,6 +160,7 @@ class Trainer:
         df_final.drop('label', axis=1, inplace=True)
         X = df_final.values
         
+        self.feat_names = df_final.columns.values.tolist()
         return X, y, project_names
 
     def _preprocess(self):
